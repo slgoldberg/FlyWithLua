@@ -126,11 +126,18 @@ set("sim/cockpit2/autopilot/vvi_dial_fpm", target_vvi)
 ```
 ````
 
-### 6. Clickable Hyperlinks
-Hyperlinks are currently written using curly-brace syntax: `{Label}(URL)` (curly braces are temporarily used instead of square brackets in this release to prevent link-parsing collisions with technical cockpit annotations and array indices). When clicked, FlyWithLua automatically invokes the native operating system browser (via `open` on macOS, `ShellExecute` on Windows, or `xdg-open` on Linux).
+### 6. Clickable Hyperlinks & Images (Dual Bracket Syntax)
+FlyWithLua and ImgWindow support both standard CommonMark square brackets and backward-compatible curly brackets side-by-side with zero configuration:
+
+* **Clickable Links:** `[Label](URL)` or `{Label}(URL)`
+* **Images:** `![Alt Text](path/to/image)` or `!{Alt Text}(path/to/image)`
+
+Mismatched brackets (like `[foo}`) are safely ignored without disrupting surrounding text. When a hyperlink is clicked, FlyWithLua automatically invokes the native operating system browser (via `open` on macOS, `ShellExecute` on Windows, or `xdg-open` on Linux).
 
 ```lua
-imgui.MD.Text("For aircraft manuals, see the {FlyWithLua Docs}(https://github.com/sparker256/FlyWithLua).")
+imgui.MD.Text("For aircraft manuals, see the [FlyWithLua Documentation](https://github.com/sparker256/FlyWithLua).")
+-- Legacy curly syntax remains fully supported:
+imgui.MD.Text("Also accessible via {FlyWithLua GitHub}(https://github.com/sparker256/FlyWithLua).")
 ```
 
 ---
@@ -352,6 +359,41 @@ imgui.SameLine()
 imgui.Kbd("Ctrl+Shift+P")
 ```
 
+### In-Cockpit File Dialogs & File Picker Suite
+FlyWithLua integrates turnkey C++11 file selection and directory scanning widgets (`imgui_file_dialog.h`) built directly into ImgWindow.
+- **Microsecond Native Scanning:** Uses POSIX `opendir` on macOS/Linux and Win32 `FindFirstFileW` on Windows -- completely eliminating Windows `io.popen("dir /b ...")` console window flashes, cmd.exe deadlocks, and subprocess overhead.
+- **In-Viewport & VR-Safe:** Renders modals inside the simulator viewport; never stalls the X-Plane graphics thread, and never loses window focus.
+
+#### `changed, chosen_file = imgui.FilePickerCombo(label, current_file, directory, [extensions], [flags])`
+An inline toolbar dropdown that scans the target directory and lists matching files for fast switching.
+```lua
+local changed, chosen_file = imgui.FilePickerCombo("##notes", current_note, "FlyWithLua/Scripts/CockpitNotes/notes/", ".md;.txt")
+if changed then
+    current_note = chosen_file
+    load_note_file(current_note)
+end
+```
+
+#### `confirmed, chosen_path, still_open = imgui.OpenFileDialog(title, is_open, [starting_dir], [extensions])`
+A modal, in-cockpit file browser with breadcrumb navigation (`[ < Back ]`, `[ Up ]`), interactive live search filtering, and human-readable file sizes (`KB`, `MB`). Double-clicking a file confirms immediately.
+```lua
+local confirmed, chosen_path, still_open = imgui.OpenFileDialog("Select Flight Plan", is_dialog_open, "Output/FMS plans/", ".fms;.flp")
+if confirmed then
+    load_flight_plan(chosen_path)
+end
+is_dialog_open = still_open
+```
+
+#### `confirmed, save_path, still_open = imgui.SaveFileDialog(title, is_open, [starting_dir], [default_filename], [extensions])`
+A modal in-cockpit file saver with filename text input and automatic extension enforcement (if the user omits `.md`, the extension is automatically appended).
+```lua
+local confirmed, save_path, still_open = imgui.SaveFileDialog("Save Notes As", is_save_open, "FlyWithLua/Scripts/CockpitNotes/notes/", "cockpit_notes.md", ".md")
+if confirmed then
+    save_note_file(save_path)
+end
+is_save_open = still_open
+```
+
 ---
 
 ## 6. Dynamic ImGui Mouse Cursors
@@ -420,6 +462,9 @@ FlyWithLua provides comprehensive alias coverage matching both standard Dear ImG
 | **Keycap Widget** | `imgui.Kbd` | `imgui.kbd` | -- | `imgui.Key` / `imgui.Keycap` |
 | **Hyperlinks** | `imgui.ButtonLink` | `imgui.button_link` | -- | `imgui.TextLink` |
 | **Mouse Cursor State** | `imgui.SetCursorHandling` | `imgui.set_cursor_handling` | -- | `imgui.EnableMouseCursors` |
+| **File Picker Combo** | `imgui.FilePickerCombo` | `imgui.file_picker_combo` | -- | `imgui.FilePicker` |
+| **Open File Dialog** | `imgui.OpenFileDialog` | `imgui.open_file_dialog` | -- | `imgui.OpenDialog` |
+| **Save File Dialog** | `imgui.SaveFileDialog` | `imgui.save_file_dialog` | -- | `imgui.SaveDialog` |
 
 ---
 

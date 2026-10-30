@@ -455,6 +455,79 @@ static int LuaCopyLastItemButton(lua_State* L) {
     return 2;
 }
 
+// ----------------------------------------------------------------------------
+// 9. In-Cockpit File Dialogs & File Picker Suite
+// ----------------------------------------------------------------------------
+
+static int LuaFilePickerCombo(lua_State* L) {
+    if (!lua_isstring(L, 1) || !lua_isstring(L, 3)) {
+        lua_pushboolean(L, false);
+        lua_pushstring(L, lua_isstring(L, 2) ? lua_tostring(L, 2) : "");
+        return 2;
+    }
+    const char* label = lua_tostring(L, 1);
+    std::string current_file = lua_isstring(L, 2) ? lua_tostring(L, 2) : "";
+    const char* directory = lua_tostring(L, 3);
+    const char* extensions = (lua_gettop(L) >= 4 && lua_isstring(L, 4)) ? lua_tostring(L, 4) : nullptr;
+    ImGuiComboFlags flags = (lua_gettop(L) >= 5 && lua_isnumber(L, 5)) ? (ImGuiComboFlags)lua_tointeger(L, 5) : 0;
+
+    bool changed = ImGui::FilePickerCombo(label, &current_file, directory, extensions, flags);
+    lua_pushboolean(L, changed);
+    lua_pushstring(L, current_file.c_str());
+    return 2;
+}
+
+static int LuaOpenFileDialog(lua_State* L) {
+    if (!lua_isstring(L, 1)) {
+        lua_pushboolean(L, false);
+        lua_pushnil(L);
+        lua_pushboolean(L, false);
+        return 3;
+    }
+    const char* title = lua_tostring(L, 1);
+    bool is_open = lua_toboolean(L, 2);
+    const char* starting_dir = (lua_gettop(L) >= 3 && lua_isstring(L, 3)) ? lua_tostring(L, 3) : ".";
+    const char* extensions = (lua_gettop(L) >= 4 && lua_isstring(L, 4)) ? lua_tostring(L, 4) : nullptr;
+
+    std::string chosen_path;
+    bool confirmed = ImGui::OpenFileDialog(title, &is_open, &chosen_path, starting_dir, extensions);
+
+    lua_pushboolean(L, confirmed);
+    if (confirmed) {
+        lua_pushstring(L, chosen_path.c_str());
+    } else {
+        lua_pushnil(L);
+    }
+    lua_pushboolean(L, is_open);
+    return 3;
+}
+
+static int LuaSaveFileDialog(lua_State* L) {
+    if (!lua_isstring(L, 1)) {
+        lua_pushboolean(L, false);
+        lua_pushnil(L);
+        lua_pushboolean(L, false);
+        return 3;
+    }
+    const char* title = lua_tostring(L, 1);
+    bool is_open = lua_toboolean(L, 2);
+    const char* starting_dir = (lua_gettop(L) >= 3 && lua_isstring(L, 3)) ? lua_tostring(L, 3) : ".";
+    const char* default_filename = (lua_gettop(L) >= 4 && lua_isstring(L, 4)) ? lua_tostring(L, 4) : "";
+    const char* extensions = (lua_gettop(L) >= 5 && lua_isstring(L, 5)) ? lua_tostring(L, 5) : nullptr;
+
+    std::string save_path;
+    bool confirmed = ImGui::SaveFileDialog(title, &is_open, &save_path, starting_dir, default_filename, extensions);
+
+    lua_pushboolean(L, confirmed);
+    if (confirmed) {
+        lua_pushstring(L, save_path.c_str());
+    } else {
+        lua_pushnil(L);
+    }
+    lua_pushboolean(L, is_open);
+    return 3;
+}
+
 // Helper to parse ImU32 color from Lua (supports integer, table {r, g, b, [a]}, or nil/0)
 static ImU32 ParseLuaColor(lua_State* L, int idx) {
     if (lua_gettop(L) < idx || lua_isnil(L, idx)) return 0;
@@ -815,6 +888,22 @@ void InitContribSupport(lua_State* L) {
     lua_pushcfunction(L, LuaSetCursorHandling);         lua_setfield(L, -2, "enable_mouse_cursors");
     lua_pushcfunction(L, LuaGetCursorHandling);         lua_setfield(L, -2, "GetCursorHandling");
     lua_pushcfunction(L, LuaGetCursorHandling);         lua_setfield(L, -2, "get_cursor_handling");
+
+    // 9. In-Cockpit File Dialogs & File Picker Suite
+    lua_pushcfunction(L, LuaFilePickerCombo);            lua_setfield(L, -2, "FilePickerCombo");
+    lua_pushcfunction(L, LuaFilePickerCombo);            lua_setfield(L, -2, "file_picker_combo");
+    lua_pushcfunction(L, LuaFilePickerCombo);            lua_setfield(L, -2, "FilePicker");
+    lua_pushcfunction(L, LuaFilePickerCombo);            lua_setfield(L, -2, "file_picker");
+
+    lua_pushcfunction(L, LuaOpenFileDialog);             lua_setfield(L, -2, "OpenFileDialog");
+    lua_pushcfunction(L, LuaOpenFileDialog);             lua_setfield(L, -2, "open_file_dialog");
+    lua_pushcfunction(L, LuaOpenFileDialog);             lua_setfield(L, -2, "OpenDialog");
+    lua_pushcfunction(L, LuaOpenFileDialog);             lua_setfield(L, -2, "open_dialog");
+
+    lua_pushcfunction(L, LuaSaveFileDialog);             lua_setfield(L, -2, "SaveFileDialog");
+    lua_pushcfunction(L, LuaSaveFileDialog);             lua_setfield(L, -2, "save_file_dialog");
+    lua_pushcfunction(L, LuaSaveFileDialog);             lua_setfield(L, -2, "SaveDialog");
+    lua_pushcfunction(L, LuaSaveFileDialog);             lua_setfield(L, -2, "save_dialog");
 
     // 7. Global convenience aliases (matching contrib-global.h in C++)
     lua_getfield(L, -1, "TimedTooltip");
